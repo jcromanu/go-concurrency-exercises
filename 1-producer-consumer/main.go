@@ -13,19 +13,23 @@ import (
 	"time"
 )
 
-func producer(stream Stream) (tweets []*Tweet) {
-	for {
-		tweet, err := stream.Next()
-		if err == ErrEOF {
-			return tweets
+func producer(stream Stream) <-chan *Tweet {
+	tweetChan := make(chan *Tweet)
+	go func() {
+		for {
+			tweet, err := stream.Next()
+			if err == ErrEOF {
+				close(tweetChan)
+			} else {
+				tweetChan <- tweet
+			}
 		}
-
-		tweets = append(tweets, tweet)
-	}
+	}()
+	return tweetChan
 }
 
-func consumer(tweets []*Tweet) {
-	for _, t := range tweets {
+func consumer(tweet <-chan *Tweet) {
+	for t := range tweet {
 		if t.IsTalkingAboutGo() {
 			fmt.Println(t.Username, "\ttweets about golang")
 		} else {
